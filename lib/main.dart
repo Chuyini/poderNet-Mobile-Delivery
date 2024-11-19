@@ -102,19 +102,41 @@ class _ViewListState extends State<ViewList> {
       ),
       // Se pasa _deliveryList a DeliveryList
       Principal(deletDataBase),
+      ApiPrtgScreen(deliveryList: _deliveryList),
     ];
 
     return Scaffold(
       appBar: AppBar(
-        title: Center(
-          child: Text("Entregas"),
+        title: Text(
+          "Entregas",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white, // Color del texto
+          ),
+        ),
+        centerTitle: true, // Centrar el título
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue, Colors.black45], // Degradado de fondo
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            image: DecorationImage(
+              image: AssetImage('imagenes/poderNet.jpg'), // Imagen de fondo
+              fit: BoxFit.cover,
+              opacity: 0.2, // Ajustar opacidad para combinar con el degradado
+            ),
+          ),
         ),
       ),
       body: _screens[_selectedIndex], // Mostrar la pantalla seleccionada.
       bottomNavigationBar: BottomNavigationBar(
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Casa"),
-          BottomNavigationBarItem(icon: Icon(Icons.ac_unit), label: "Noticias"),
+          BottomNavigationBarItem(icon: Icon(Icons.ac_unit), label: "Eliminar"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.account_tree_outlined), label: "PRTG API"),
         ],
         currentIndex: _selectedIndex,
         onTap: _onItemTap, // Actualizar el índice seleccionado.
@@ -195,23 +217,64 @@ class DeliveryList extends StatelessWidget {
 }
 
 class Principal extends StatelessWidget {
-  Function deleteDataBase;
+  final Function deleteDataBase;
 
   Principal(this.deleteDataBase);
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Center(
-          child: Text("Pantalla de noticias"),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Eliminar'),
+        backgroundColor: Colors.blue,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Center(
+              child: Text(
+                "Pantalla de Formateo",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue[800],
+                ),
+              ),
+            ),
+            SizedBox(height: 40), // Espaciado entre texto y botón
+            ElevatedButton(
+              onPressed: () {
+                deleteDataBase();
+              },
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                backgroundColor: Colors.red, // Color del fondo del botón
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                elevation: 5, // Sombra del botón
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.delete, color: Colors.white), // Icono de borrar
+                  SizedBox(width: 10), // Espaciado entre ícono y texto
+                  Text(
+                    "Eliminar base de datos local",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white, // Color del texto
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        ElevatedButton(
-            onPressed: () {
-              deleteDataBase();
-            },
-            child: Text("Eliminar base de datos"))
-      ],
+      ),
     );
   }
 }
@@ -304,7 +367,28 @@ class _OneDeliveryScreenState extends State<OneDeliveryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Entregas"),
+        title: Text(
+          "Entregas",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white, // Color del texto
+          ),
+        ),
+        centerTitle: true, // Centrar el título
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue, Colors.purple], // Degradado de fondo
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            image: DecorationImage(
+              image: AssetImage('imagenes/poderNet.jpg'), // Imagen de fondo
+              fit: BoxFit.cover,
+              opacity: 0.2, // Ajustar opacidad para combinar con el degradado
+            ),
+          ),
+        ),
       ),
       body: Column(
         children: [
@@ -436,8 +520,6 @@ class _WorkingDeliveryState extends State<WorkingDelivery> {
       } else {
         isCheckCompany = false;
       }
-
-
     } else {
       isCheckCompany = true;
     }
@@ -494,8 +576,10 @@ class _WorkingDeliveryState extends State<WorkingDelivery> {
         dns: _dnsController.text,
         radioBase: _radioBaseController.text,
         coordinates: _coordinatesController.text,
-        contract: contract, // Usamos la variable contract calculada arriba
-        date: "2020-11-12", // ajustando
+        contract: contract,
+        // Usamos la variable contract calculada arriba
+        date: "2020-11-12",
+        // ajustando
         routerScreenshot: "Vacio",
         speedtestScreenshot: "Vacio",
         idCompany: 23,
@@ -509,7 +593,6 @@ class _WorkingDeliveryState extends State<WorkingDelivery> {
     // Volver a la pantalla anterior
     Navigator.pop(context);
   }
-
 
   void _updateN(Delivery deliverys) {
     setState(() {
@@ -700,6 +783,95 @@ class _RadioState extends State<Radio> {
         ),
         Text("Residencial"),
       ],
+    );
+  }
+}
+
+//APARTIR DE AQUI VAMOS A MANEJAR LO RELACIONADO A LA API DE PRTG
+
+class ApiPrtgScreen extends StatefulWidget {
+  final List<Map<String, dynamic>> deliveryList;
+
+  ApiPrtgScreen({required this.deliveryList});
+
+  @override
+  State<StatefulWidget> createState() {
+    return _ApiPrtgScreenState();
+  }
+}
+
+class _ApiPrtgScreenState extends State<ApiPrtgScreen> {
+  late final List<Map<String, dynamic>> deliveryList;
+
+  @override
+  void initState() {
+    deliveryList = widget.deliveryList;
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('API PRTG Screen'),
+        backgroundColor: Colors.blue,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: ListView.builder(
+          itemCount: deliveryList.length,
+          itemBuilder: (context, index) {
+            final delivery = deliveryList[index];
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  border: Border.all(color: Colors.blue, width: 2),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 5,
+                      offset: Offset(2, 2),
+                    ),
+                  ],
+                ),
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Nombre: ${delivery['name'] ?? 'N/A'}",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue[800],
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      "IP: ${delivery['ip'] ?? 'N/A'}",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.blue[700],
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      "Coordenadas: ${delivery['coordinates'] ?? 'N/A'}",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.blue[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }
