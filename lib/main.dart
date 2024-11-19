@@ -407,6 +407,8 @@ class WorkingDelivery extends StatefulWidget {
 }
 
 class _WorkingDeliveryState extends State<WorkingDelivery> {
+  final GlobalKey<_RadioState> _childKey = GlobalKey<_RadioState>();
+
   // Controladores de texto
   late TextEditingController _ipController;
   late TextEditingController _maskController;
@@ -419,6 +421,7 @@ class _WorkingDeliveryState extends State<WorkingDelivery> {
   // Variables para estado
   Delivery? delivery;
   late bool isUpdate;
+  bool isCheckCompany = false;
 
   @override
   void initState() {
@@ -427,13 +430,25 @@ class _WorkingDeliveryState extends State<WorkingDelivery> {
     // Inicializar variables
     delivery = widget.delivery;
     isUpdate = delivery != null;
+    if (delivery != null) {
+      if (delivery!.contract.contains("Empresarial")) {
+        isCheckCompany = true;
+      } else {
+        isCheckCompany = false;
+      }
+
+
+    } else {
+      isCheckCompany = true;
+    }
 
     // Inicializar controladores con valores existentes o por defecto
     _ipController = TextEditingController(text: isUpdate ? delivery?.ip : "");
     _maskController =
-        TextEditingController(text: isUpdate ? delivery?.mask : "");
+        TextEditingController(text: isUpdate ? delivery?.mask : "255.0.0.0");
     _gwController = TextEditingController(text: isUpdate ? delivery?.gw : "");
-    _dnsController = TextEditingController(text: isUpdate ? delivery?.dns : "");
+    _dnsController =
+        TextEditingController(text: isUpdate ? delivery?.dns : "8.8.8.8");
     _radioBaseController =
         TextEditingController(text: isUpdate ? delivery?.radioBase : "");
     _coordinatesController =
@@ -465,6 +480,11 @@ class _WorkingDeliveryState extends State<WorkingDelivery> {
 
   void _saveData() {
     setState(() {
+      // Determinar el valor del contrato basándonos en el estado del widget hijo
+      String contract = _childKey.currentState?.isCheckedCompany == true
+          ? "Empresarial"
+          : "Residencial";
+
       // Crear objeto Delivery con los valores ingresados
       Delivery delivery = Delivery(
         name: _nameController.text,
@@ -474,9 +494,8 @@ class _WorkingDeliveryState extends State<WorkingDelivery> {
         dns: _dnsController.text,
         radioBase: _radioBaseController.text,
         coordinates: _coordinatesController.text,
-        contract: "Empresarial",
-        date: "2020-11-12",
-        // Ajusta esto según sea necesario
+        contract: contract, // Usamos la variable contract calculada arriba
+        date: "2020-11-12", // ajustando
         routerScreenshot: "Vacio",
         speedtestScreenshot: "Vacio",
         idCompany: 23,
@@ -491,8 +510,11 @@ class _WorkingDeliveryState extends State<WorkingDelivery> {
     Navigator.pop(context);
   }
 
+
   void _updateN(Delivery deliverys) {
     setState(() {
+      bool isCompany = _childKey.currentState?.isCheckedCompany ?? false;
+
       Delivery delivery = Delivery(
         id: deliverys.id,
         name: _nameController.text,
@@ -502,7 +524,7 @@ class _WorkingDeliveryState extends State<WorkingDelivery> {
         dns: _dnsController.text,
         radioBase: _radioBaseController.text,
         coordinates: _coordinatesController.text,
-        contract: "Empresarial",
+        contract: isCompany ? "Empresarial" : "Residencial",
         date: "2020-11-12",
         // Ajusta esto según sea necesario
         routerScreenshot: "Vacio",
@@ -588,6 +610,9 @@ class _WorkingDeliveryState extends State<WorkingDelivery> {
               ),
             ),
             SizedBox(height: 16.0),
+
+            Radio(key: _childKey, focuseComany: isCheckCompany),
+            //<-- usamos global keys para acceder a los valores del hijo
             // Botón Guardar
             ElevatedButton(
               onPressed: () {
@@ -611,6 +636,70 @@ class _WorkingDeliveryState extends State<WorkingDelivery> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class Radio extends StatefulWidget {
+  bool? focuseComany;
+
+  Radio({super.key, required this.focuseComany});
+
+  @override
+  State<StatefulWidget> createState() {
+    return _RadioState();
+  }
+}
+
+class _RadioState extends State<Radio> {
+  bool isCheckedCompany = true;
+  bool isCheckedResidential = false;
+
+  @override
+  void initState() {
+    if (widget.focuseComany != null) {
+      isCheckedCompany = widget.focuseComany!;
+      isCheckedResidential = !widget.focuseComany!;
+    }
+
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        Transform.scale(
+          scale: 1.5,
+          child: Checkbox(
+            value: isCheckedCompany,
+            activeColor: Colors.lightBlue,
+            onChanged: (vari) {
+              setState(() {
+                isCheckedCompany = vari!;
+                isCheckedResidential = !isCheckedCompany;
+              });
+            },
+          ),
+        ),
+        Text("Empresarial"),
+        /*que pasara cuando presinamos*/
+
+        Transform.scale(
+          scale: 1.5,
+          child: Checkbox(
+              value: isCheckedResidential,
+              activeColor: Colors.lightBlue,
+              onChanged: (value) {
+                setState(() {
+                  isCheckedResidential = value!;
+                  isCheckedCompany = !isCheckedResidential;
+                });
+              }),
+        ),
+        Text("Residencial"),
+      ],
     );
   }
 }
