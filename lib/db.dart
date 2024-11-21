@@ -21,7 +21,7 @@ class DB {
     return _database!;
   }
 
-  // Crea y configura la base de datos
+  // Crear y configurar
   Future<sqflite.Database> _initDB() async {
     final dbPath = await sqflite.getDatabasesPath();
     return await sqflite.openDatabase(
@@ -74,7 +74,7 @@ class DB {
   static Future<bool> insertDelivery(Delivery delivery) async {
     try {
       sqflite.Database db = await _openDB();
-      // Convertir el objeto `Delivery` a un mapa, pero sin el campo `id`
+      // Mapear
       final data = delivery.toMap();
 
       // Imprimir los datos del mapa de la entrega

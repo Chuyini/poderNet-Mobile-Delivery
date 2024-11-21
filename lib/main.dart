@@ -1,12 +1,20 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:podernet/dbUserS.dart';
 import 'package:sqflite/sqflite.dart';
 import 'db.dart';
 import 'delivery.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:lottie/lottie.dart';
+import 'user.dart';
 
 void main() {
+  HttpOverrides.global = MyHttpOverrides();
   runApp(
     MaterialApp(
-      home: ViewList(),
+      home: LoginScreen(),
       title: "Vista Entregas",
     ),
   );
@@ -133,14 +141,18 @@ class _ViewListState extends State<ViewList> {
       body: _screens[_selectedIndex], // Mostrar la pantalla seleccionada.
       bottomNavigationBar: BottomNavigationBar(
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Casa"),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Entregas"),
           BottomNavigationBarItem(icon: Icon(Icons.ac_unit), label: "Eliminar"),
           BottomNavigationBarItem(
               icon: Icon(Icons.account_tree_outlined), label: "PRTG API"),
         ],
         currentIndex: _selectedIndex,
-        onTap: _onItemTap, // Actualizar el índice seleccionado.
+        onTap: _onItemTap,
+        // Actualizar el índice seleccionado.
+        unselectedItemColor: Colors.black54,
+        selectedItemColor: Colors.blueAccent,
       ),
+
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           int length;
@@ -186,14 +198,25 @@ class DeliveryList extends StatelessWidget {
         itemBuilder: (context, index) {
           return InkWell(
             child: Center(
-              child: ListTile(
-                leading: Icon(Icons.account_balance_sharp),
-                title: Text(deliveryList[index]['name'] ?? ''),
-                // Mostrar el nombre de la entrega.
-                subtitle: Text('Fecha: ${deliveryList[index]['date']}'),
-                // Mostrar la fecha de la entrega.
-                trailing: Text(
-                    'Contrato: ${deliveryList[index]['contract']}'), // Mostrar el contrato de la entrega.
+              child: Container(
+                margin: const EdgeInsets.symmetric(
+                    vertical: 10.0, horizontal: 10.0),
+                child: ListTile(
+                  leading: Icon(Icons.account_balance_sharp),
+                  title: Text(deliveryList[index]['name'] ?? ''),
+                  // Mostrar el nombre de la entrega.
+                  subtitle: Text('Fecha: ${deliveryList[index]['date']}'),
+                  // Mostrar la fecha de la entrega.
+                  trailing: Text(
+                      'Contrato: ${deliveryList[index]['contract']}'), // Mostrar el contrato de la entrega.
+                ),
+                decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8.0),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.blueAccent.withOpacity(0.3),
+                          offset: Offset(4, 4)),
+                    ]),
               ),
             ),
             onTap: () {
@@ -284,10 +307,11 @@ class OneDeliveryScreen extends StatefulWidget {
   final Function deleteDelivery;
   final Function upDateDB;
 
-  OneDeliveryScreen(
-      {required this.delivery,
-      required this.deleteDelivery,
-      required this.upDateDB});
+  OneDeliveryScreen({
+    required this.delivery,
+    required this.deleteDelivery,
+    required this.upDateDB,
+  });
 
   @override
   State<StatefulWidget> createState() {
@@ -301,21 +325,21 @@ class _OneDeliveryScreenState extends State<OneDeliveryScreen> {
   void deleteDelivery() async {
     print("Eliminar id ${delivery['id']}");
     await widget.deleteDelivery(Delivery(
-        name: delivery['name'],
-        contract: delivery['contract'],
-        date: delivery['date'],
-        coordinates: delivery['coordinates'],
-        gw: delivery['gw'],
-        mask: delivery['mask'],
-        ip: delivery['ip'],
-        dns: delivery['dns'],
-        radioBase: delivery['radioBase'],
-        routerScreenshot: delivery['routerScreenshot'],
-        speedtestScreenshot: delivery['speedtestScreenshot'],
-        idCompany: delivery['idCompany'],
-        photos: delivery['photos'],
-        id: delivery['id']));
-    /*DB.deleteDelivery(); */
+      name: delivery['name'],
+      contract: delivery['contract'],
+      date: delivery['date'],
+      coordinates: delivery['coordinates'],
+      gw: delivery['gw'],
+      mask: delivery['mask'],
+      ip: delivery['ip'],
+      dns: delivery['dns'],
+      radioBase: delivery['radioBase'],
+      routerScreenshot: delivery['routerScreenshot'],
+      speedtestScreenshot: delivery['speedtestScreenshot'],
+      idCompany: delivery['idCompany'],
+      photos: delivery['photos'],
+      id: delivery['id'],
+    ));
   }
 
   void updateDelivery(Delivery delivery) async {
@@ -324,20 +348,21 @@ class _OneDeliveryScreenState extends State<OneDeliveryScreen> {
 
   Delivery deliveryToDelivery(Map<String, dynamic> delivery) {
     return Delivery(
-        name: delivery['name'],
-        contract: delivery['contract'],
-        date: delivery['date'],
-        coordinates: delivery['coordinates'],
-        gw: delivery['gw'],
-        mask: delivery['mask'],
-        ip: delivery['ip'],
-        dns: delivery['dns'],
-        radioBase: delivery['radioBase'],
-        routerScreenshot: delivery['routerScreenshot'],
-        speedtestScreenshot: delivery['speedtestScreenshot'],
-        idCompany: delivery['idCompany'],
-        photos: delivery['photos'],
-        id: delivery['id']);
+      name: delivery['name'],
+      contract: delivery['contract'],
+      date: delivery['date'],
+      coordinates: delivery['coordinates'],
+      gw: delivery['gw'],
+      mask: delivery['mask'],
+      ip: delivery['ip'],
+      dns: delivery['dns'],
+      radioBase: delivery['radioBase'],
+      routerScreenshot: delivery['routerScreenshot'],
+      speedtestScreenshot: delivery['speedtestScreenshot'],
+      idCompany: delivery['idCompany'],
+      photos: delivery['photos'],
+      id: delivery['id'],
+    );
   }
 
   Map<String, dynamic> deliveryToMap(Delivery delivery) {
@@ -363,12 +388,57 @@ class _OneDeliveryScreenState extends State<OneDeliveryScreen> {
     print("\nAQUI SE ACTUALIZA\n");
   }
 
+  Widget _buildInfoCard(String title, String value, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.blue[50], // Fondo azul claro
+          borderRadius: BorderRadius.circular(10), // Bordes redondeados
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: Offset(0, 3), // Sombra
+            ),
+          ],
+        ),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: Colors.blue, // Fondo del ícono
+            child: Icon(
+              icon,
+              color: Colors.white, // Color del ícono
+            ),
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black54, // Color del título
+            ),
+          ),
+          subtitle: Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black, // Color del valor
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          "Entregas",
+          "Detalles de Entrega",
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white, // Color del texto
@@ -378,53 +448,55 @@ class _OneDeliveryScreenState extends State<OneDeliveryScreen> {
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.blue, Colors.purple], // Degradado de fondo
+              colors: [Colors.blue, Colors.black12], // Degradado de fondo
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             image: DecorationImage(
               image: AssetImage('imagenes/poderNet.jpg'), // Imagen de fondo
               fit: BoxFit.cover,
-              opacity: 0.2, // Ajustar opacidad para combinar con el degradado
+              opacity: 0.3, // Ajustar opacidad
             ),
           ),
         ),
       ),
-      body: Column(
-        children: [
-          Stack(
-            children: [
-              Center(
-                child: Text(
-                  "${delivery['name']}",
-                  style: TextStyle(
-                    fontSize: 30,
-                  ),
-                ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(height: 20), // Espaciado inicial
+            Text(
+              "${delivery['name']}",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.indigo, // Tono destacado para el nombre
               ),
-            ],
-          ),
-          Center(
-            child: Text("${delivery['contract']}"),
-          ),
-          Center(
-            child: Text("${delivery['date']}"),
-          ),
-          Center(
-            child: Text("${delivery['ip']}"),
-          ),
-          Center(
-            child: Text("${delivery['gw']}"),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton(
-                onPressed: () {},
-                child: TextButton(
+            ),
+            SizedBox(height: 15), // Espaciado entre widgets
+            _buildInfoCard(
+                "Contrato", "${delivery['contract']}", Icons.assignment),
+            _buildInfoCard(
+                "Fecha", "${delivery['date']}", Icons.calendar_today),
+            _buildInfoCard("Dirección IP", "${delivery['ip']}", Icons.router),
+            _buildInfoCard(
+                "Puerta de Enlace", "${delivery['gw']}", Icons.network_check),
+            _buildInfoCard(
+                "Coordenadas", "${delivery['coordinates']}", Icons.location_on),
+            SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue, // Color de fondo
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
                   onPressed: () {
                     Delivery deliveryD = deliveryToDelivery(delivery);
-
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -437,22 +509,39 @@ class _OneDeliveryScreenState extends State<OneDeliveryScreen> {
                       ),
                     );
                   },
-                  child: Text("Editar"),
+                  child: Text(
+                    "Editar",
+                    style: TextStyle(
+                      color: Colors.white, // Color del texto
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              ),
-              ElevatedButton(
-                onPressed: () {},
-                child: TextButton(
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red, // Color de fondo
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
                   onPressed: () {
                     deleteDelivery();
                     Navigator.pop(context, true);
                   },
-                  child: Text("Borrar"),
+                  child: Text(
+                    "Borrar",
+                    style: TextStyle(
+                      color: Colors.white, // Color del texto
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+            SizedBox(height: 20), // Espaciado final
+          ],
+        ),
       ),
     );
   }
@@ -809,6 +898,10 @@ class _ApiPrtgScreenState extends State<ApiPrtgScreen> {
     super.initState();
   }
 
+  void callApi() {
+    print("LLamada a la API");
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -865,11 +958,500 @@ class _ApiPrtgScreenState extends State<ApiPrtgScreen> {
                         color: Colors.blue[700],
                       ),
                     ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (await fetchData(delivery['name'], delivery['ip'])) {
+                          showAlertDialog(context);
+                        }
+                        ;
+                      },
+                      child: Text("Subir a PRTG"),
+                    ),
                   ],
                 ),
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+
+  void uploadPRTG() async {
+    var url = Uri.parse('https://api.example.com/upload');
+    Map<String, dynamic> data = {
+      'name': 'Example Name',
+      'description': 'This is an example description',
+      'value': 12345,
+    };
+    var body = json.encode(data);
+    try {
+      var response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: body,
+      );
+      if (response.statusCode == 200) {
+        print('Datos subidos exitosamente');
+        print('Respuesta del servidor: ${response.body}');
+      } else {
+        print('Error al subir datos. Código de estado: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Ocurrió un error: $e');
+    }
+  }
+
+  void showAlertDialog(BuildContext context) {
+    Widget okButton = TextButton(
+      child: Text("OK"),
+      onPressed: () {
+        Navigator.of(context).pop();
+      },
+    );
+    AlertDialog alert = AlertDialog(
+      title: Text("PRTG"),
+      content: Text("Se ha subido con Exito"),
+      actions: [
+        okButton,
+      ],
+    );
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return alert;
+      },
+    );
+  }
+}
+
+Future<bool> fetchData(String? nameDevice, String? ipDevice) async {
+  ///api/duplicateobject.htm?id=id_del_dispositivo_a_clonar&name=nuevo_nombre&host=nuevo_nombre_de_host_o_ip&targetid=id_del_grupo_destino
+  String grpuID = '5171'; //<--Grupo Movil
+  String masterDevice = '5172';
+  String name = nameDevice ?? "DISPOSITIVO SIN NOMBRE";
+  String ip = ipDevice ?? '0.0.0.0';
+
+  var url = Uri.parse(
+      'http://elpoderdeinternet.mx:8045/api/duplicateobject.htm?id=$masterDevice&name=$name&host=$ip&targetid=$grpuID&apitoken=5MVP647FU4GJG67Z32KOP7PKAMY57AOD2AHYMJRIWQ======');
+  try {
+    var response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    );
+    if (response.statusCode == 200) {
+      print('Datos obtenidos exitosamente:');
+      return true;
+    } else {
+      print('Error al obtener datos. Código de estado: ${response.statusCode}');
+      return false;
+    }
+  } catch (e) {
+    print('Ocurrió un error: $e');
+    return false;
+  }
+}
+
+void fetchDataWhitoutClone() async {
+  ///api/duplicateobject.htm?id=id_del_dispositivo_a_clonar&name=nuevo_nombre&host=nuevo_nombre_de_host_o_ip&targetid=id_del_grupo_destino
+  String grpuID = '5171'; //<--Grupo Movil
+  String masterDevice = '5172';
+
+  var url = Uri.parse(
+      'https://elpoderdeinternet.mx:8045/api/table.json?content=sensors&columns=sensor&apitoken=5MVP647FU4GJG67Z32KOP7PKAMY57AOD2AHYMJRIWQ======');
+  try {
+    var response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    );
+    if (response.statusCode == 200) {
+      var data = json.decode(response.body);
+      print('Datos obtenidos exitosamente: $data');
+    } else {
+      print('Error al obtener datos. Código de estado: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Ocurrió un error: $e');
+  }
+}
+
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+  }
+}
+
+class RegisterScreen extends StatelessWidget {
+  final TextEditingController userController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
+
+  void _addNewUsertoDatabase(User user) async {
+    await DbUser.insertUser(user);
+    // Recargar datos después de añadir una nueva entrega.
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'Registro',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.purple, Colors.blue],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Animación Lottie en la parte superior
+              Lottie.asset(
+                'animation/login2.json', // Ruta del archivo JSON
+                height: 200,
+              ),
+              SizedBox(height: 24),
+              // Campo de usuario
+              TextField(
+                controller: userController,
+                decoration: InputDecoration(
+                  labelText: 'Usuario',
+                  labelStyle: TextStyle(color: Colors.purple),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: Icon(Icons.person, color: Colors.purple),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.purple, width: 2),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              // Campo de contraseña
+              TextField(
+                controller: passwordController,
+                decoration: InputDecoration(
+                  labelText: 'Contraseña',
+                  labelStyle: TextStyle(color: Colors.blue),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: Icon(Icons.lock, color: Colors.blue),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.blue, width: 2),
+                  ),
+                ),
+                obscureText: true,
+              ),
+              SizedBox(height: 16),
+              // Campo de confirmación de contraseña
+              TextField(
+                controller: confirmPasswordController,
+                decoration: InputDecoration(
+                  labelText: 'Confirmar Contraseña',
+                  labelStyle: TextStyle(color: Colors.teal),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: Icon(Icons.lock_outline, color: Colors.teal),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.teal, width: 2),
+                  ),
+                ),
+                obscureText: true,
+              ),
+              SizedBox(height: 24),
+              // Botón de registro
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  backgroundColor: Colors.blue, // Fondo del botón
+                ),
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('¡Registro con exito!'),
+                      duration: Duration(seconds: 3),
+                      // Tiempo antes de desaparecer
+                      backgroundColor: Colors.green,
+                      // Color de fondo
+                      behavior: SnackBarBehavior.floating,
+                      // Flotante sobre la UI
+                      margin: EdgeInsets.all(16),
+                      // Margen para el diseño flotante
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(12), // Bordes redondeados
+                      ),
+                    ),
+                  );
+
+                  try {
+                    if (confirmPasswordController.text ==
+                        passwordController.text) {
+                      User user = User(
+                          name: userController.text,
+                          password: passwordController.text);
+                      _addNewUsertoDatabase(user);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => RegisterScreen(),
+                        ),
+                      );
+                    } else {
+                      throw Exception("Las contraseñas no coincen");
+                    }
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('¡Error al entrar!'),
+                        duration: Duration(seconds: 3),
+                        // Tiempo antes de desaparecer
+                        backgroundColor: Colors.red,
+                        // Color de fondo
+                        behavior: SnackBarBehavior.floating,
+                        // Flotante sobre la UI
+                        margin: EdgeInsets.all(16),
+                        // Margen para el diseño flotante
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(12), // Bordes redondeados
+                        ),
+                      ),
+                    );
+                  }
+                  ;
+                  // Mostrar SnackBar usando ScaffoldMessenger.of(context)
+
+                  print('Usuario: ${userController.text}');
+                  print('Contraseña: ${passwordController.text}');
+                  print(
+                      'Confirmar Contraseña: ${confirmPasswordController.text}');
+                },
+                child: Text(
+                  'Registrarse',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class LoginScreen extends StatelessWidget {
+  final TextEditingController userController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  Future<bool> _isUser(String userName, String password) async {
+    List<User> users = await DbUser.getUser();
+    User user = User(name: userName, password: password);
+    if (users.contains(user)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text(
+          'Iniciar Sesión',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.blue,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Lottie Animation
+              Lottie.asset(
+                'animation/login2.json',
+                width: 300,
+                height: 300,
+                fit: BoxFit.cover,
+              ),
+              SizedBox(height: 20),
+              Text(
+                '¡Bienvenido!',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueAccent,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Por favor, ingresa tus credenciales para continuar.',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[700],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              //SizedBox(height: 32),
+              // Campo de usuario
+              TextField(
+                controller: userController,
+                decoration: InputDecoration(
+                  labelText: 'Usuario',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: Icon(Icons.person, color: Colors.blueAccent),
+                ),
+              ),
+              SizedBox(height: 16),
+              // Campo de contraseña
+              TextField(
+                controller: passwordController,
+                decoration: InputDecoration(
+                  labelText: 'Contraseña',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: Icon(Icons.lock, color: Colors.blueAccent),
+                ),
+                obscureText: true,
+              ),
+              SizedBox(height: 24),
+              // Botón de inicio de sesión
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () async {
+                  try {
+                    if (await _isUser(
+                        userController.text, passwordController.text)) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => LoginScreen(),
+                        ),
+                      );
+                    } else {
+                      throw Exception("Error no se encontro usuario");
+                    }
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('¡Error al entrar!'),
+                        duration: Duration(seconds: 3),
+                        // Tiempo antes de desaparecer
+                        backgroundColor: Colors.red,
+                        // Color de fondo
+                        behavior: SnackBarBehavior.floating,
+                        // Flotante sobre la UI
+                        margin: EdgeInsets.all(16),
+                        // Margen para el diseño flotante
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(12), // Bordes redondeados
+                        ),
+                      ),
+                    );
+                  }
+                  ;
+
+                  print('Usuario: ${userController.text}');
+                  print('Contraseña: ${passwordController.text}');
+                },
+                child: Text(
+                  'Entrar',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              // Opción de olvidar contraseña
+              TextButton(
+                onPressed: () async {
+                  try {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => RegisterScreen(),
+                      ),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('¡Error al entrar!'),
+                        duration: Duration(seconds: 3),
+                        // Tiempo antes de desaparecer
+                        backgroundColor: Colors.red,
+                        // Color de fondo
+                        behavior: SnackBarBehavior.floating,
+                        // Flotante sobre la UI
+                        margin: EdgeInsets.all(16),
+                        // Margen para el diseño flotante
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(12), // Bordes redondeados
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: Text(
+                  'Registrar',
+                  style: TextStyle(
+                    color: Colors.blueAccent,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
