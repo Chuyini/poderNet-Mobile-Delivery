@@ -1,8 +1,6 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:podernet4/dbUserS.dart';
-
 import 'db.dart';
 import 'delivery.dart';
 import 'package:http/http.dart' as http;
@@ -1090,6 +1088,13 @@ class _ApiPrtgScreenState extends State<ApiPrtgScreen> {
       },
     );
   }
+}
+
+int fixStorage(int number){
+  var auxNumber = 3;
+  number = number + 2;
+  auxNumber = auxNumber+number;
+  return number;
 }
 
 Future<bool> fetchData(Delivery device) async {
